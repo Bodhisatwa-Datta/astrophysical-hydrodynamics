@@ -1,4 +1,4 @@
-"""Reusable execution and error analysis for 1D Riemann benchmarks."""
+"""Reusable execution and error analysis for hydrodynamic benchmarks."""
 
 from __future__ import annotations
 
@@ -8,10 +8,11 @@ from time import perf_counter
 import numpy as np
 from numpy.typing import NDArray
 
-from .diagnostics import state_summary, totals
+from .diagnostics import state_summary, state_summary_2d, totals, totals_2d
 from .exact_riemann import exact_riemann_solution
-from .problems import RiemannProblem, entropy_wave
+from .problems import RiemannProblem, entropy_wave, entropy_wave_2d
 from .solver1d import Grid1D, Solver1D
+from .solver2d import Grid2D, Solver2D
 from .state import euler_flux, primitive_to_conservative
 
 
@@ -31,6 +32,17 @@ class SmoothWaveResult:
     """Numerical and exact states for one periodic entropy-wave crossing."""
 
     x: NDArray[np.float64]
+    numerical: NDArray[np.float64]
+    exact: NDArray[np.float64]
+    diagnostics: dict[str, float | int | str]
+
+
+@dataclass(frozen=True)
+class SmoothWave2DResult:
+    """Numerical and exact states for one diagonal periodic-wave crossing."""
+
+    x: NDArray[np.float64]
+    y: NDArray[np.float64]
     numerical: NDArray[np.float64]
     exact: NDArray[np.float64]
     diagnostics: dict[str, float | int | str]
@@ -175,3 +187,59 @@ def run_entropy_wave(
         ) / abs(initial)
     diagnostics.update(state_summary(solver.active_conserved, 1.4))
     return SmoothWaveResult(grid.centers, numerical, exact, diagnostics)
+
+
+def run_entropy_wave_2d(
+    resolution: int,
+    cfl: float,
+    reconstruction: str,
+    limiter: str,
+    integrator: str,
+    final_time: float = 1.0,
+    riemann_solver: str = "hll",
+) -> SmoothWave2DResult:
+    """Advect a smooth diagonal entropy wave on a periodic unit square."""
+    grid = Grid2D(0.0, 1.0, resolution, 0.0, 1.0, resolution)
+    solver = Solver2D(
+        grid,
+        gamma=1.4,
+        cfl=cfl,
+        reconstruction=reconstruction,
+        limiter=limiter,
+        integrator=integrator,
+        x_boundary="periodic",
+        y_boundary="periodic",
+        riemann_solver=riemann_solver,
+    )
+    solver.initialise_function(entropy_wave_2d)
+    cell_area = grid.dx * grid.dy
+    initial_totals = totals_2d(solver.active_conserved, cell_area)
+    start = perf_counter()
+    solver.run(final_time)
+    runtime = perf_counter() - start
+    final_totals = totals_2d(solver.active_conserved, cell_area)
+    numerical = solver.primitive.copy()
+    x, y = grid.mesh
+    exact = entropy_wave_2d(x, y, time=final_time)
+    difference = numerical - exact
+    diagnostics: dict[str, float | int | str] = {
+        "resolution": resolution,
+        "time": solver.time,
+        "steps": solver.steps,
+        "runtime_seconds": runtime,
+        "reconstruction": reconstruction,
+        "limiter": limiter if reconstruction == "muscl" else "none",
+        "integrator": integrator,
+        "riemann_solver": riemann_solver,
+        "density_L1_error": float(cell_area * np.sum(np.abs(difference[0]))),
+        "density_Linf_error": float(np.max(np.abs(difference[0]))),
+    }
+    for quantity in ("mass", "momentum_x", "momentum_y", "energy"):
+        initial = initial_totals[quantity]
+        diagnostics[f"relative_{quantity}_change"] = (
+            final_totals[quantity] - initial
+        ) / abs(initial)
+    diagnostics.update(state_summary_2d(solver.active_conserved, 1.4))
+    return SmoothWave2DResult(
+        grid.x_centers, grid.y_centers, numerical, exact, diagnostics
+    )

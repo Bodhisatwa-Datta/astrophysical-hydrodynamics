@@ -1,0 +1,4 @@
+resolution,reconstruction,limiter,integrator,steps,runtime_two_runs_seconds,density_L1_x,density_L1_y,observed_order,rotational_density_Linf,rotational_velocity_Linf,relative_mass_change,relative_energy_change,minimum_density,minimum_pressure
+32,muscl,mc,rk2,25,0.18339840000408003,0.012221663522639238,0.012221663522639238,,0.0,0.0,0.0,-1.6148698540002275e-16,0.125,0.1
+64,muscl,mc,rk2,53,1.0199964999992517,0.007459355937661775,0.007459355937661775,0.7123176930099999,0.0,0.0,0.0,0.0,0.125,0.1
+128,muscl,mc,rk2,109,7.190039200002502,0.004075024204814071,0.004075024204814071,0.8722424407168555,0.0,0.0,0.0,0.0,0.125,0.1

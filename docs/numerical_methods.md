@@ -171,5 +171,178 @@ Between two grid spacings, the experimental order is
 $$p=\frac{\log(E_h/E_{h/2})}{\log 2}.$$
 
 Shock-tube solutions contain discontinuities, so their global observed order
-need not equal the method's formal order on smooth solutions. A smooth-wave
-test will be required alongside the future second-order scheme.
+need not equal the method's formal order on smooth solutions. Smooth periodic
+entropy waves are therefore measured separately in one and two dimensions.
+
+## Two-dimensional update
+
+The current 2D solver uses an unsplit conservative update
+
+$$
+\mathbf{U}_{i,j}^{n+1}=\mathbf{U}_{i,j}^{n}
+-\frac{\Delta t}{\Delta x}
+(\widehat{\mathbf{F}}_{i+1/2,j}-\widehat{\mathbf{F}}_{i-1/2,j})
+-\frac{\Delta t}{\Delta y}
+(\widehat{\mathbf{G}}_{i,j+1/2}-\widehat{\mathbf{G}}_{i,j-1/2}).
+$$
+
+The baseline uses piecewise-constant interface states and forward Euler. The
+second-order path applies the same primitive-variable TVD reconstruction
+independently along x and y, then combines both flux divergences in a single
+method-of-lines operator. SSP-RK2 evaluates that complete unsplit operator at
+both stages. This is direction-by-direction reconstruction, not dimensional
+time splitting; it does not include a corner-transport or transverse predictor.
+
+For y faces, normal and tangential momentum are rotated into the same ordering
+used at x faces, the chosen HLL, HLLC, or Rusanov construction is applied, and
+the momentum fluxes are rotated back. HLLC carries tangential velocity into its
+star states.
+
+The multidimensional timestep is
+
+$$
+\Delta t=C_{\rm CFL}\left[
+\max_{i,j}\left(
+\frac{|v_x|+c_s}{\Delta x}+\frac{|v_y|+c_s}{\Delta y}
+\right)\right]^{-1}.
+$$
+
+Outflow boundaries use zero-gradient extrapolation. Periodic boundaries copy
+the opposite active cells. Reflective boundaries reverse only the momentum
+normal to the wall while copying density, tangential momentum, and energy.
+
+## Kelvin--Helmholtz benchmark and diagnostics
+
+The benchmark uses a periodic unit square with two smooth shear layers. A
+window function
+
+$$
+L(y)=\frac{1}{2}\left[
+\tanh\left(\frac{y-0.25}{a}\right)-
+\tanh\left(\frac{y-0.75}{a}\right)
+\right],\qquad a=0.025,
+$$
+
+sets
+
+$$
+\rho=1+L,\qquad v_x=-0.5+L,\qquad p=2.5.
+$$
+
+The transverse seed is
+
+$$
+v_y=0.01\sin(4\pi x)\left[
+e^{-d_{0.25}(y)^2/(2\sigma^2)}+
+e^{-d_{0.75}(y)^2/(2\sigma^2)}
+\right],\qquad \sigma=0.05,
+$$
+
+where each $d_{y_0}$ is the shortest signed periodic distance from $y_0$.
+This selects two wavelengths across the domain and avoids a grid-scale jump in
+density or horizontal velocity.
+
+Cell-centred vorticity is calculated with periodic centred differences,
+
+$$
+\omega_z=\frac{\partial v_y}{\partial x}-
+\frac{\partial v_x}{\partial y}.
+$$
+
+The primary growth diagnostic is transverse kinetic energy,
+
+$$
+K_y=\sum_{i,j}\frac{1}{2}\rho_{i,j}v_{y,i,j}^2\,\Delta x\Delta y.
+$$
+
+RMS vertical velocity, RMS and maximum vorticity, density standard deviation,
+thermodynamic minima, conserved totals, runtime, and step count are recorded at
+fixed output times. Since no physical viscosity is present, resolution changes
+alter the effective numerical dissipation and must be considered when
+interpreting growth and small-scale structure.
+
+## Constant gravity and hydrostatic walls
+
+Uniform gravity is added to the same method-of-lines operator as the flux
+divergence, so both SSP-RK2 stages recompute the momentum and energy sources.
+Besides the acoustic CFL limit, the timestep is restricted by
+
+$$
+\Delta t_g=\sqrt{C_{\rm CFL}\frac{\min(\Delta x,\Delta y)}{|\mathbf g|}}.
+$$
+
+At a hydrostatic horizontal wall, density and tangential momentum are reflected
+and normal momentum changes sign. Ghost-cell pressure is extrapolated using
+
+$$
+p_{j+1}-p_j=\frac{1}{2}(\rho_j+\rho_{j+1})g_y\Delta y,
+$$
+
+which is consistent with $dp/dy=\rho g_y$. This reduces boundary-driven motion
+but does not make the complete finite-volume method exactly well balanced;
+unperturbed control calculations are therefore retained and measured.
+
+## Rayleigh--Taylor benchmark
+
+The unit-square benchmark uses $g_y=-0.5$, a light density of 1 below a heavy
+density of 2, and a smooth transition of width $a=0.025$ at $y_0=0.5$:
+
+$$
+\rho(y)=\bar\rho+\Delta\rho\tanh\left(\frac{y-y_0}{a}\right),
+$$
+
+where $\bar\rho=1.5$ and $\Delta\rho=0.5$. Integrating hydrostatic balance
+analytically gives
+
+$$
+p(y)=p_0+g_y\left[
+\bar\rho(y-y_0)+\Delta\rho\,a
+\ln\cosh\left(\frac{y-y_0}{a}\right)
+\right],\qquad p_0=2.5.
+$$
+
+The perturbed calculation starts with
+
+$$
+v_y=0.0025\sin(4\pi x)
+\exp\left[-\frac{(y-y_0)^2}{2(0.05)^2}\right],
+$$
+
+while the control uses exactly zero velocity. The density-$1.5$ contour is
+interpolated in every column; its maximum and minimum provide bubble height and
+spike depth. An exponential rate is fitted to the mean interface amplitude
+between $t=0.8$ and $t=2.2$. Gas-plus-potential energy, vertical kinetic energy,
+vorticity, conservation, and the unperturbed RMS vertical velocity are also
+recorded.
+
+## Sedov--Taylor energy deposition and shock tracking
+
+The blast uses a uniform ambient state $(\rho,p)=(1,10^{-5})$ on
+$[-0.5,0.5]^2$. One unit of thermal energy is deposited inside radius
+$r_{\rm inj}=0.05$ with the compact kernel
+
+$$
+w(r)=
+\begin{cases}
+[1-(r/r_{\rm inj})^2]^2,&r<r_{\rm inj},\\
+0,&r\ge r_{\rm inj}.
+\end{cases}
+$$
+
+On each grid, the sampled weights are normalized by
+$\sum_{i,j}w_{i,j}\Delta x\Delta y$. The discrete injected energy is therefore
+exactly $E_0=1$ rather than varying with the number of cells inside the
+injection region. The energy is thermal, velocities initially vanish, and no
+single cell receives the entire explosion.
+
+Cell values are averaged in annuli of width $\min(\Delta x,\Delta y)$. The
+shock radius is the location of the steepest outward decrease in the radial
+density profile, with a local quadratic interpolation of the gradient minimum.
+A power law $R=Ct^\alpha$ is fitted from $t=0.015$ to $0.05$, after the shock
+has expanded well beyond the injection radius. The measured $\alpha$ is
+compared with the two-dimensional similarity prediction $1/2$.
+
+Angular symmetry is measured independently by repeating the radial-gradient
+location in 16 equal polar sectors. The standard deviation and peak-to-peak
+range of those sector radii are normalized by their mean. These measurements
+include hydrodynamic anisotropy and finite sampling error from the detector.
