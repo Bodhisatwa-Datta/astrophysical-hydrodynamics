@@ -8,7 +8,8 @@ from typing import Callable
 import numpy as np
 from numpy.typing import NDArray
 
-from .boundary_conditions import apply_outflow
+from .boundary_conditions import apply_outflow, apply_periodic
+from .reconstruction import LIMITERS, reconstruct_interfaces
 from .riemann import hll_flux
 from .state import conservative_to_primitive, primitive_to_conservative
 from .timestepping import cfl_timestep
@@ -45,16 +46,39 @@ class Grid1D:
 
 
 class Solver1D:
-    """Godunov finite-volume method with piecewise-constant states and HLL fluxes."""
+    """Configurable first/second-order finite-volume Euler solver."""
 
-    def __init__(self, grid: Grid1D, gamma: float = 1.4, cfl: float = 0.8):
+    def __init__(
+        self,
+        grid: Grid1D,
+        gamma: float = 1.4,
+        cfl: float = 0.8,
+        reconstruction: str = "constant",
+        limiter: str = "mc",
+        integrator: str = "euler",
+        boundary: str = "outflow",
+    ):
         if gamma <= 1.0 or not np.isfinite(gamma):
             raise ValueError("gamma must be finite and greater than one")
         if not 0.0 < cfl <= 1.0:
             raise ValueError("cfl must lie in (0, 1]")
+        if reconstruction not in ("constant", "muscl"):
+            raise ValueError("reconstruction must be 'constant' or 'muscl'")
+        if limiter not in LIMITERS:
+            raise ValueError(f"unknown limiter {limiter!r}; choose from {tuple(LIMITERS)}")
+        if integrator not in ("euler", "rk2"):
+            raise ValueError("integrator must be 'euler' or 'rk2'")
+        if boundary not in ("outflow", "periodic"):
+            raise ValueError("boundary must be 'outflow' or 'periodic'")
+        if reconstruction == "muscl" and grid.nghost < 2:
+            raise ValueError("MUSCL reconstruction requires at least two ghost cells")
         self.grid = grid
         self.gamma = gamma
         self.cfl = cfl
+        self.reconstruction = reconstruction
+        self.limiter = limiter
+        self.integrator = integrator
+        self.boundary = boundary
         self.time = 0.0
         self.steps = 0
         self.conserved = np.empty((3, grid.n_cells + 2 * grid.nghost))
@@ -75,7 +99,7 @@ class Solver1D:
         if values.shape != (3, self.grid.n_cells):
             raise ValueError(f"primitive state must have shape (3, {self.grid.n_cells})")
         self.conserved[:, self.grid.active] = primitive_to_conservative(values, self.gamma)
-        apply_outflow(self.conserved, self.grid.nghost)
+        self._apply_boundary(self.conserved)
         self.time = 0.0
         self.steps = 0
         self._initialised = True
@@ -104,19 +128,28 @@ class Solver1D:
         if dt > stable_dt + tolerance:
             raise ValueError(f"requested dt={dt:g} exceeds CFL limit {stable_dt:g}")
 
-        apply_outflow(self.conserved, self.grid.nghost)
-        interface_flux = hll_flux(
-            self.conserved[:, :-1], self.conserved[:, 1:], self.gamma
-        )
+        initial = self.conserved.copy()
+        rhs_initial = self._active_rhs(initial)
         start = self.grid.nghost
         stop = start + self.grid.n_cells
-        flux_right = interface_flux[:, start:stop]
-        flux_left = interface_flux[:, start - 1 : stop - 1]
-        self.conserved[:, start:stop] -= dt / self.grid.dx * (flux_right - flux_left)
+
+        if self.integrator == "euler":
+            updated = initial[:, start:stop] + dt * rhs_initial
+        else:
+            stage = initial.copy()
+            stage[:, start:stop] = initial[:, start:stop] + dt * rhs_initial
+            conservative_to_primitive(stage[:, start:stop], self.gamma)
+            self._apply_boundary(stage)
+            rhs_stage = self._active_rhs(stage)
+            updated = 0.5 * initial[:, start:stop] + 0.5 * (
+                stage[:, start:stop] + dt * rhs_stage
+            )
+
+        self.conserved[:, start:stop] = updated
 
         # Validate immediately; no density or pressure floors are applied.
         conservative_to_primitive(self.conserved[:, start:stop], self.gamma)
-        apply_outflow(self.conserved, self.grid.nghost)
+        self._apply_boundary(self.conserved)
         self.time += dt
         self.steps += 1
         return dt
@@ -134,3 +167,28 @@ class Solver1D:
         if not self._initialised:
             raise RuntimeError("solver has not been initialised")
 
+    def _apply_boundary(self, state: NDArray[np.float64]) -> None:
+        if self.boundary == "outflow":
+            apply_outflow(state, self.grid.nghost)
+        else:
+            apply_periodic(state, self.grid.nghost)
+
+    def _active_rhs(self, state: NDArray[np.float64]) -> NDArray[np.float64]:
+        """Return the semi-discrete flux divergence in active cells."""
+        self._apply_boundary(state)
+        if self.reconstruction == "constant":
+            interface_flux = hll_flux(state[:, :-1], state[:, 1:], self.gamma)
+        else:
+            primitive = conservative_to_primitive(state, self.gamma)
+            left_primitive, right_primitive = reconstruct_interfaces(
+                primitive, self.limiter
+            )
+            left = primitive_to_conservative(left_primitive, self.gamma)
+            right = primitive_to_conservative(right_primitive, self.gamma)
+            interface_flux = hll_flux(left, right, self.gamma)
+
+        start = self.grid.nghost
+        stop = start + self.grid.n_cells
+        flux_right = interface_flux[:, start:stop]
+        flux_left = interface_flux[:, start - 1 : stop - 1]
+        return -(flux_right - flux_left) / self.grid.dx

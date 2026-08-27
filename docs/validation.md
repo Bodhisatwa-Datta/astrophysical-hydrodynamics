@@ -122,9 +122,54 @@ No density or pressure floor was used. The numerical centre remains positive,
 though the first-order method overestimates its exact thermodynamic state and
 produces substantial specific-internal-energy diffusion.
 
+## Smooth entropy-wave convergence
+
+To measure formal accuracy away from discontinuities, I advected
+
+$$
+\rho(x,0)=1+0.2\sin(2\pi x),\qquad u=1,\qquad p=1
+$$
+
+through one periodic unit domain. Constant velocity and pressure make this an
+exact Euler solution, and after $t=1$ the density profile should return to its
+initial position. I used CFL 0.4 for every method and repeated the calculation
+at 32, 64, 128, and 256 cells.
+
+| Method | $L_1$ at 32 cells | $L_1$ at 256 cells | Order, 128 to 256 |
+|---|---:|---:|---:|
+| First order + Euler | $5.944591\times10^{-2}$ | $9.614786\times10^{-3}$ | 0.944 |
+| MUSCL minmod + RK2 | $1.297335\times10^{-2}$ | $3.698817\times10^{-4}$ | 1.864 |
+| MUSCL MC + RK2 | $4.030144\times10^{-3}$ | $8.687254\times10^{-5}$ | 1.969 |
+| MUSCL van Leer + RK2 | $6.843088\times10^{-3}$ | $1.173868\times10^{-4}$ | 2.038 |
+
+The first-order result approaches order one, while MC and van Leer approach
+order two on the finest pair. Minmod also trends toward second order but loses
+more accuracy near the smooth extrema. Periodic mass changes remained at or
+below $4.5\times10^{-16}$ in the recorded runs.
+
+## Reconstruction comparison on discontinuous flow
+
+I then reran all four Riemann problems at 400 cells and CFL 0.4 so the
+first-order and MUSCL results were compared under the same timestep policy.
+The table gives density $L_1$ error.
+
+| Method | Sod | Contact | Strong shock | Rarefaction |
+|---|---:|---:|---:|---:|
+| First order | $7.811995\times10^{-3}$ | $1.990704\times10^{-2}$ | $1.185164\times10^{-1}$ | $1.511274\times10^{-2}$ |
+| MUSCL minmod | $2.467526\times10^{-3}$ | $7.728979\times10^{-3}$ | $6.129825\times10^{-2}$ | $4.545778\times10^{-3}$ |
+| MUSCL MC | $1.496039\times10^{-3}$ | $4.359090\times10^{-3}$ | $3.981569\times10^{-2}$ | $1.677545\times10^{-3}$ |
+| MUSCL van Leer | $1.664298\times10^{-3}$ | $5.025405\times10^{-3}$ | $4.528675\times10^{-2}$ | $2.342627\times10^{-3}$ |
+
+The 1--99% contact width fell from 0.140 for the first-order run to 0.060 with
+minmod, 0.0275 with MC, and 0.035 with van Leer. All recorded densities and
+pressures remained positive without floors. MC gave the lowest errors in this
+particular comparison, but that is not evidence that it is universally best;
+the limiter choice still trades smoothness, compression, and robustness.
+
 ## Current validation boundary
 
-No smooth-wave convergence test, second-order reconstruction, alternative
-Riemann flux, or multidimensional benchmark has been run. The current evidence
-supports the stated first-order HLL baseline only. The next validation target
-is a smooth periodic wave alongside MUSCL and RK2.
+The second-order result has been demonstrated for one smooth entropy wave and
+the limiter behavior has been measured on four Riemann problems. No alternative
+Riemann flux or multidimensional benchmark has been run. The next validation
+target is a controlled HLL, HLLC, and Rusanov comparison using these same
+spatial and temporal methods.

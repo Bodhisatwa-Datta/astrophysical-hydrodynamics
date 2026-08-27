@@ -80,6 +80,32 @@ RIEMANN_PROBLEMS = {
 }
 
 
+def entropy_wave(
+    x: NDArray[np.float64],
+    time: float = 0.0,
+    amplitude: float = 0.2,
+    velocity: float = 1.0,
+    pressure: float = 1.0,
+) -> NDArray[np.float64]:
+    """Return a smooth periodic entropy wave advected at constant velocity.
+
+    Constant velocity and pressure make this an exact Euler solution. The
+    density profile is periodic on a unit domain and returns to its initial
+    position after one crossing time when ``velocity=1``.
+    """
+    coordinates = np.asarray(x, dtype=np.float64)
+    phase = 2.0 * np.pi * (coordinates - velocity * time)
+    density = 1.0 + amplitude * np.sin(phase)
+    return np.stack(
+        (
+            density,
+            np.full_like(coordinates, velocity),
+            np.full_like(coordinates, pressure),
+        ),
+        axis=0,
+    )
+
+
 def sod_initial_condition(
     x: NDArray[np.float64], discontinuity: float = 0.5
 ) -> NDArray[np.float64]:

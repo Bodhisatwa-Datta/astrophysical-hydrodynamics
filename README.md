@@ -31,9 +31,12 @@ All quantities in the current benchmarks are dimensionless.
 
 - cell-centred finite volumes on a uniform 1D grid;
 - piecewise-constant (first-order Godunov) reconstruction;
+- primitive-variable MUSCL reconstruction with minmod, monotonized-central,
+  and van Leer slope limiters;
 - HLL approximate Riemann flux with Davis signal-speed estimates;
-- explicit forward-Euler updates and a configurable CFL timestep;
-- transmissive/outflow ghost-cell boundaries;
+- selectable forward-Euler or two-stage SSP-RK2 integration with a
+  configurable CFL timestep;
+- transmissive/outflow and periodic ghost-cell boundaries;
 - primitive/conserved conversion with strict non-finite and positivity checks;
 - an internal exact ideal-gas Riemann solution for shock-tube validation;
 - mass, momentum, energy, boundary-flux-budget, positivity, and Mach-number
@@ -61,6 +64,15 @@ python examples/run_riemann.py strong_shock --cells 400 --cfl 0.7
 python examples/run_riemann.py contact_discontinuity --cells 400
 python examples/run_riemann.py rarefaction --cells 400 --cfl 0.7
 python benchmarks/convergence/sod.py
+python benchmarks/convergence/entropy_wave.py
+python benchmarks/reconstruction/compare.py
+```
+
+An individual second-order run can be made with, for example:
+
+```bash
+python examples/run_riemann.py sod --cfl 0.4 \
+  --reconstruction muscl --limiter mc --integrator rk2
 ```
 
 The numerical sanity checks can be repeated with:
@@ -89,6 +101,13 @@ smooth-flow accuracy measurement. See [validation details](docs/validation.md).
 
 ![Measured Sod errors from 50 to 800 cells](figures/sod_convergence_first_order.png)
 
+For a smooth periodic entropy wave, the 128-to-256 cell observed density orders
+are 1.864 (minmod), 1.969 (MC), and 2.038 (van Leer). MC reduces the 256-cell
+density $L_1$ error from `9.614786e-3` for the first-order method to
+`8.687254e-5`.
+
+![Smooth entropy-wave convergence](figures/entropy_wave_convergence.png)
+
 ## Repository layout
 
 ```text
@@ -102,21 +121,19 @@ figures/            generated scientific figures
 
 ## Current limitations
 
-Only source-free 1D Euler flow is implemented. The scheme is first order in
-space and time, HLL diffuses the contact wave, and only outflow boundaries are
-available. There is no positivity-preserving fallback: an invalid state raises
-an exception for diagnosis. The exact solver is a validation utility, not the
-evolution flux. No 2D, gravity, physical viscosity, MUSCL reconstruction, HLLC,
-or RK2 is implemented yet. The current convergence study concerns a
-discontinuous solution and does not establish formal smooth-flow order.
+Only source-free 1D Euler flow is implemented. HLL remains diffusive at contact
+waves even with MUSCL reconstruction. There is no positivity-preserving
+fallback: an invalid state raises an exception for diagnosis. The exact solver
+is a validation utility, not the evolution flux. No HLLC/Rusanov comparison,
+2D flow, gravity, or physical viscosity is implemented yet. The present
+second-order measurement uses a smooth entropy wave; more smooth solutions
+would strengthen the formal verification.
 
 ## Planned extensions
 
-The next milestone is primitive-variable MUSCL reconstruction with minmod, MC,
-and van Leer limiters, paired with RK2 time integration. It should include a
-smooth-wave convergence test so formal order can be measured. HLLC and Rusanov
-comparisons follow. Only after those 1D methods are validated will the code be
-generalized to 2D Kelvin--Helmholtz, Rayleigh--Taylor, and Sedov--Taylor
-benchmarks.
+The next milestone is HLLC and Rusanov implementation, followed by controlled
+flux comparisons using the same first- and second-order spatial methods. After
+the 1D flux study is validated, the code will be generalized to 2D
+Kelvin--Helmholtz, Rayleigh--Taylor, and Sedov--Taylor benchmarks.
 
 Licensed under GPL-3.0; see [LICENSE](LICENSE).

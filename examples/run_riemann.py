@@ -18,12 +18,27 @@ def main() -> None:
     parser.add_argument("problem", choices=RIEMANN_PROBLEMS)
     parser.add_argument("--cells", type=int, default=400)
     parser.add_argument("--cfl", type=float, default=0.8)
+    parser.add_argument("--reconstruction", choices=("constant", "muscl"), default="constant")
+    parser.add_argument("--limiter", choices=("minmod", "mc", "vanleer"), default="mc")
+    parser.add_argument("--integrator", choices=("euler", "rk2"), default="euler")
     parser.add_argument("--output", type=Path)
     args = parser.parse_args()
 
     problem = RIEMANN_PROBLEMS[args.problem]
-    output = args.output or Path("figures") / f"{problem.name}_hll_first_order.png"
-    result = run_riemann_problem(problem, args.cells, args.cfl)
+    method_label = (
+        "first_order"
+        if args.reconstruction == "constant" and args.integrator == "euler"
+        else f"{args.reconstruction}_{args.limiter}_{args.integrator}"
+    )
+    output = args.output or Path("figures") / f"{problem.name}_hll_{method_label}.png"
+    result = run_riemann_problem(
+        problem,
+        args.cells,
+        args.cfl,
+        args.reconstruction,
+        args.limiter,
+        args.integrator,
+    )
 
     gamma = problem.gamma
     numerical_internal = result.numerical[2] / ((gamma - 1.0) * result.numerical[0])
@@ -50,7 +65,8 @@ def main() -> None:
     axes[1, 1].set_xlabel("Position $x$ (dimensionless)")
     display_name = problem.name.replace("_", " ").title()
     figure.suptitle(
-        f"{display_name}, t={problem.final_time:g}, N={args.cells}"
+        f"{display_name}, {method_label.replace('_', ' ')}, "
+        f"t={problem.final_time:g}, N={args.cells}"
     )
     figure.tight_layout()
     output.parent.mkdir(parents=True, exist_ok=True)

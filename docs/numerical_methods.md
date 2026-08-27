@@ -13,7 +13,53 @@ $$
 
 The current reconstruction is piecewise constant, so the left and right
 states at each face are the adjacent cell averages. Time integration is one
-forward-Euler step. The resulting method is first order in smooth regions.
+forward-Euler step. This path remains available as the first-order baseline.
+
+## MUSCL reconstruction
+
+The second-order path reconstructs primitive variables
+$\mathbf{W}=(\rho,u,p)^T$. For each cell,
+
+$$
+\Delta\mathbf{W}_i=
+\phi(\mathbf{W}_i-\mathbf{W}_{i-1},
+     \mathbf{W}_{i+1}-\mathbf{W}_i),
+$$
+
+and the interface states are
+
+$$
+\mathbf{W}_{i+1/2}^{L}=\mathbf{W}_i+\frac{1}{2}\Delta\mathbf{W}_i,
+\qquad
+\mathbf{W}_{i+1/2}^{R}=\mathbf{W}_{i+1}-\frac{1}{2}\Delta\mathbf{W}_{i+1}.
+$$
+
+Reconstructing primitive variables makes density and pressure limiting direct
+and avoids mixing the thermodynamic constraint into conserved-component
+slopes. Reconstructed states are checked for positive density and pressure;
+they are not clipped.
+
+The available TVD limiters are minmod, monotonized central (MC), and van Leer.
+Minmod is the most dissipative of the three. MC permits a steeper monotone
+slope, while van Leer uses a smooth harmonic mean when neighboring slopes have
+the same sign. Every limiter returns zero when the one-sided slopes disagree.
+
+## Time integration
+
+MUSCL is paired with the two-stage strong-stability-preserving Runge--Kutta
+method
+
+$$
+\mathbf{U}^{(1)}=\mathbf{U}^{n}+\Delta t\,L(\mathbf{U}^{n}),
+$$
+
+$$
+\mathbf{U}^{n+1}=\frac{1}{2}\mathbf{U}^{n}
++\frac{1}{2}\left[\mathbf{U}^{(1)}+\Delta t\,L(\mathbf{U}^{(1)})\right].
+$$
+
+Ghost cells and interface fluxes are recomputed at both stages. Using RK2 with
+MUSCL keeps temporal and spatial accuracy consistent for smooth flow.
 
 ## HLL interface flux
 
@@ -51,6 +97,8 @@ $$
 Only the final step is shortened to land exactly on the requested output time.
 The default CFL number is 0.8. Transmissive boundaries copy the nearest active
 cell into each ghost cell, corresponding to a zero-gradient extrapolation.
+Periodic boundaries copy active cells from the opposite edge and are used for
+the smooth entropy-wave experiment.
 
 For the current open-boundary Riemann problems, conservation is assessed using
 the finite-volume boundary budget
