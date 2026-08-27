@@ -212,10 +212,48 @@ The mean wall times over the four problems were:
 In this single local run, HLLC cost roughly 9--12% more than HLL. These timings
 are descriptive rather than a hardware-independent performance result.
 
+## First-order 2D Euler core
+
+I began the 2D validation with a uniform periodic state on a $48\times36$ grid:
+
+$$
+(\rho,v_x,v_y,p)=(1.1,0.3,-0.2,0.9).
+$$
+
+After evolving to $t=0.2$ with HLLC, the largest change in any conserved cell
+value was reported as zero, as were the relative changes in total mass, both
+momentum components, and total energy. I separately checked the directional
+flux identities for HLL, HLLC, and Rusanov and inspected reflective ghost cells
+to confirm that only wall-normal momentum changes sign.
+
+I then embedded the Sod problem in a square 2D grid, first with the initial
+discontinuity normal to x and then with the entire problem rotated by 90
+degrees. Both calculations used first-order unsplit HLL, CFL 0.4, and final
+time $t=0.1$.
+
+| Grid | Density $L_1$, x-normal | Density $L_1$, y-normal | Order | Rotational $L_\infty$ difference |
+|---:|---:|---:|---:|---:|
+| $32^2$ | $2.418633\times10^{-2}$ | $2.418633\times10^{-2}$ | -- | $0.0$ |
+| $64^2$ | $1.875955\times10^{-2}$ | $1.875955\times10^{-2}$ | 0.367 | $0.0$ |
+| $128^2$ | $1.322181\times10^{-2}$ | $1.322181\times10^{-2}$ | 0.505 | $0.0$ |
+
+At $64^2$ and $128^2$, mass and total-energy changes were zero to reported
+precision. The small $32^2$ changes, $2.56\times10^{-11}$ in mass and
+$4.22\times10^{-11}$ in energy, are consistent with the long numerical tails
+of the coarse first-order solution reaching the outflow boundary. Density and
+pressure remained positive without floors at every recorded resolution.
+
+The identical rotated profiles show that the directional momentum mapping and
+flux indexing are symmetric for this grid-aligned problem. The low observed
+orders are not a smooth-flow accuracy measurement: the solution contains a
+rarefaction corner, contact discontinuity, and shock, and the 2D method is
+currently first order.
+
 ## Current validation boundary
 
 The second-order result has been demonstrated for one smooth entropy wave and
-the limiter and flux behavior has been measured on four Riemann problems. No
-multidimensional benchmark has been run. The next target is a 2D Euler core,
-validated first with uniform flow and directionally rotated one-dimensional
-problems before any instability calculation is attempted.
+the limiter and flux behavior has been measured on four 1D Riemann problems.
+The 2D homogeneous Euler core has passed uniform-flow and grid-aligned rotated
+shock-tube checks, but it remains first order. The next target is an unsplit 2D
+MUSCL-RK2 extension and smooth-advection convergence study before any
+Kelvin--Helmholtz result is attempted.

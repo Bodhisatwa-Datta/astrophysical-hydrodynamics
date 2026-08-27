@@ -173,3 +173,34 @@ $$p=\frac{\log(E_h/E_{h/2})}{\log 2}.$$
 Shock-tube solutions contain discontinuities, so their global observed order
 need not equal the method's formal order on smooth solutions. A smooth-wave
 test will be required alongside the future second-order scheme.
+
+## First-order 2D update
+
+The current 2D solver uses an unsplit conservative update
+
+$$
+\mathbf{U}_{i,j}^{n+1}=\mathbf{U}_{i,j}^{n}
+-\frac{\Delta t}{\Delta x}
+(\widehat{\mathbf{F}}_{i+1/2,j}-\widehat{\mathbf{F}}_{i-1/2,j})
+-\frac{\Delta t}{\Delta y}
+(\widehat{\mathbf{G}}_{i,j+1/2}-\widehat{\mathbf{G}}_{i,j-1/2}).
+$$
+
+Interface states are currently piecewise constant. For y faces, normal and
+tangential momentum are rotated into the same ordering used at x faces, the
+chosen HLL, HLLC, or Rusanov construction is applied, and the momentum fluxes
+are rotated back. HLLC carries tangential velocity into its star states.
+
+The multidimensional timestep is
+
+$$
+\Delta t=C_{\rm CFL}left[
+\max_{i,j}\left(
+\frac{|v_x|+c_s}{\Delta x}+\frac{|v_y|+c_s}{\Delta y}
+\right)\right]^{-1}.
+$$
+
+This is an unsplit forward-Euler method rather than dimensional splitting.
+Outflow boundaries use zero-gradient extrapolation. Periodic boundaries copy
+the opposite active cells. Reflective boundaries reverse only the momentum
+normal to the wall while copying density, tangential momentum, and energy.

@@ -34,6 +34,43 @@ $$c_s=\sqrt{\gamma p/\rho}.$$
 The adiabatic index is configurable and must exceed one. The Sod benchmark
 uses $\gamma=1.4$.
 
+## Two-dimensional Euler system
+
+The 2D extension solves
+
+$$
+\partial_t\mathbf{U}+\partial_x\mathbf{F}+\partial_y\mathbf{G}=0,
+$$
+
+with
+
+$$
+\mathbf{U}=
+\begin{pmatrix}\rho\\ \rho v_x\\ \rho v_y\\ E\end{pmatrix},
+$$
+
+$$
+\mathbf{F}=
+\begin{pmatrix}
+\rho v_x\\ \rho v_x^2+p\\ \rho v_xv_y\\ v_x(E+p)
+\end{pmatrix},
+\qquad
+\mathbf{G}=
+\begin{pmatrix}
+\rho v_y\\ \rho v_xv_y\\ \rho v_y^2+p\\ v_y(E+p)
+\end{pmatrix}.
+$$
+
+The total energy is
+
+$$
+E=\frac{p}{\gamma-1}+\frac{1}{2}\rho(v_x^2+v_y^2).
+$$
+
+The present source term is zero. Gravity will require both momentum and energy
+source terms and is deliberately deferred until the homogeneous 2D operator is
+validated.
+
 ## Admissible states
 
 The code requires finite values, strictly positive density, and strictly
@@ -54,4 +91,3 @@ run reported here the waves have not reached the boundaries at $t=0.2$;
 momentum nevertheless changes because unequal far-field pressures exert a net
 flux across the two domain boundaries. Mass and energy boundary fluxes remain
 zero for the stationary far-field states.
-
