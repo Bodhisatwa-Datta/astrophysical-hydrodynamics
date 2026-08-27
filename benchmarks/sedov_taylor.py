@@ -13,6 +13,7 @@ import numpy as np
 
 from hydro.diagnostics import radial_profile_2d, shock_radius_2d, state_summary_2d, totals_2d
 from hydro.problems import sedov_taylor_2d
+from hydro.sedov import sedov_similarity_2d
 from hydro.solver2d import Grid2D, Solver2D
 
 matplotlib.use("Agg")
@@ -73,18 +74,31 @@ def record(
     grid = solver.grid
     totals = totals_2d(solver.active_conserved, grid.dx * grid.dy)
     primitive = solver.primitive
+    measured_shock_radius = shock_radius_2d(
+        primitive,
+        *grid.mesh,
+        bin_width=min(grid.dx, grid.dy),
+        minimum_radius=INJECTION_RADIUS,
+        maximum_radius=0.45,
+    )
+    exact_shock_radius = sedov_similarity_2d(
+        np.asarray([0.0]),
+        solver.time,
+        gamma=solver.gamma,
+        explosion_energy=EXPLOSION_ENERGY,
+        ambient_pressure=1.0e-5,
+    ).shock_radius
     diagnostics: dict[str, float | int] = {
         "resolution": grid.nx,
         "time": solver.time,
         "steps": solver.steps,
         "runtime_seconds": runtime,
-        "shock_radius": shock_radius_2d(
-            primitive,
-            *grid.mesh,
-            bin_width=min(grid.dx, grid.dy),
-            minimum_radius=INJECTION_RADIUS,
-            maximum_radius=0.45,
-        ),
+        "shock_radius": measured_shock_radius,
+        "exact_shock_radius": exact_shock_radius,
+        "relative_shock_radius_error": (
+            measured_shock_radius - exact_shock_radius
+        )
+        / exact_shock_radius,
         "relative_mass_change": (
             totals["mass"] - initial_totals["mass"]
         )
@@ -154,6 +168,61 @@ def fit_similarity(records: list[dict[str, float | int]]) -> tuple[float, float]
     return float(exponent), float(np.exp(log_coefficient))
 
 
+def similarity_profile_errors(
+    primitive: np.ndarray,
+    grid: Grid2D,
+    time: float,
+) -> dict[str, float]:
+    """Compare radial means with the exact strong-shock similarity profiles."""
+    x, y = grid.mesh
+    radius_2d = np.sqrt(x**2 + y**2)
+    radial_velocity_2d = np.divide(
+        x * primitive[1] + y * primitive[2],
+        radius_2d,
+        out=np.zeros_like(radius_2d),
+        where=radius_2d > 0.0,
+    )
+    profiles = []
+    radii = np.empty(0)
+    for field in (primitive[0], radial_velocity_2d, primitive[3]):
+        radii, profile, counts = radial_profile_2d(
+            field,
+            x,
+            y,
+            bin_width=min(grid.dx, grid.dy),
+            maximum_radius=0.45,
+        )
+        profiles.append(profile)
+    exact = sedov_similarity_2d(
+        radii,
+        time,
+        gamma=GAMMA,
+        explosion_energy=EXPLOSION_ENERGY,
+        ambient_pressure=1.0e-5,
+    )
+    comparison = (radii <= 1.25 * exact.shock_radius) & (counts > 0)
+    exact_profiles = (exact.density, exact.radial_velocity, exact.pressure)
+    names = ("density", "radial_velocity", "pressure")
+    errors = {}
+    for name, numerical, reference in zip(names, profiles, exact_profiles):
+        compared_radii = radii[comparison]
+        absolute_error = (
+            np.abs(numerical[comparison] - reference[comparison]) * compared_radii
+        )
+        reference_magnitude = np.abs(reference[comparison]) * compared_radii
+        radial_widths = np.diff(compared_radii)
+        numerator = np.sum(
+            0.5 * (absolute_error[:-1] + absolute_error[1:]) * radial_widths
+        )
+        denominator = np.sum(
+            0.5
+            * (reference_magnitude[:-1] + reference_magnitude[1:])
+            * radial_widths
+        )
+        errors[f"{name}_profile_relative_l1"] = float(numerator / denominator)
+    return errors
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--resolutions", nargs="+", type=int, default=[64, 96, 128])
@@ -186,12 +255,24 @@ def main() -> None:
         )
         histories.extend(records)
         exponent, coefficient = fit_similarity(records)
+        exact_coefficient = sedov_similarity_2d(
+            np.asarray([0.0]),
+            args.time,
+            gamma=GAMMA,
+            explosion_energy=EXPLOSION_ENERGY,
+            ambient_pressure=1.0e-5,
+        ).shock_radius / np.sqrt(args.time)
         angular_radii = sector_shock_radii(primitive, grid)
         summary = dict(records[-1])
         summary.update(
             {
                 "similarity_exponent": exponent,
                 "similarity_coefficient": coefficient,
+                "exact_similarity_coefficient": exact_coefficient,
+                "relative_similarity_coefficient_error": (
+                    coefficient - exact_coefficient
+                )
+                / exact_coefficient,
                 "relative_exponent_error": (exponent - 0.5) / 0.5,
                 "angular_shock_radius_mean": float(np.mean(angular_radii)),
                 "angular_shock_radius_relative_std": float(
@@ -203,6 +284,7 @@ def main() -> None:
                 ),
             }
         )
+        summary.update(similarity_profile_errors(primitive, grid, args.time))
         summaries.append(summary)
         final_states.append((resolution, primitive, grid))
 
@@ -249,7 +331,8 @@ def main() -> None:
     args.figure.parent.mkdir(parents=True, exist_ok=True)
     figure.savefig(args.figure, dpi=180, bbox_inches="tight")
 
-    analysis, axes = plt.subplots(1, 3, figsize=(14.5, 4.2))
+    analysis, axes = plt.subplots(2, 2, figsize=(11.5, 8.5))
+    axes = axes.ravel()
     reference_times = np.linspace(0.015, args.time, 100)
     for (resolution, primitive, grid), summary in zip(final_states, summaries):
         rows = [row for row in histories if row["resolution"] == resolution]
@@ -274,15 +357,48 @@ def main() -> None:
         _, pressure, _ = radial_profile_2d(
             primitive[3], *grid.mesh, bin_width=min(grid.dx, grid.dy), maximum_radius=0.45
         )
+        x, y = grid.mesh
+        radius_2d = np.sqrt(x**2 + y**2)
+        radial_velocity_2d = np.divide(
+            x * primitive[1] + y * primitive[2],
+            radius_2d,
+            out=np.zeros_like(radius_2d),
+            where=radius_2d > 0.0,
+        )
+        _, radial_velocity, _ = radial_profile_2d(
+            radial_velocity_2d,
+            x,
+            y,
+            bin_width=min(grid.dx, grid.dy),
+            maximum_radius=0.45,
+        )
         axes[1].plot(radii, density, label=f"{resolution}²")
         axes[2].semilogy(radii, pressure, label=f"{resolution}²")
-    finest = summaries[-1]
-    reference_coefficient = float(finest["shock_radius"]) / np.sqrt(args.time)
+        axes[3].plot(radii, radial_velocity, label=f"{resolution}²")
+    reference = sedov_similarity_2d(
+        np.linspace(0.0, 0.45, 1200),
+        args.time,
+        gamma=GAMMA,
+        explosion_energy=EXPLOSION_ENERGY,
+        ambient_pressure=1.0e-5,
+    )
     axes[0].plot(
         reference_times,
-        reference_coefficient * np.sqrt(reference_times),
+        reference.shock_radius * np.sqrt(reference_times / args.time),
         "k:",
-        label=r"$t^{1/2}$ reference",
+        linewidth=2.0,
+        label="exact similarity solution",
+    )
+    axes[1].plot(reference.radius, reference.density, "k:", linewidth=2.0, label="exact")
+    axes[2].semilogy(
+        reference.radius, reference.pressure, "k:", linewidth=2.0, label="exact"
+    )
+    axes[3].plot(
+        reference.radius,
+        reference.radial_velocity,
+        "k:",
+        linewidth=2.0,
+        label="exact",
     )
     axes[0].set_ylabel("Shock radius")
     axes[0].set_xlabel("Time")
@@ -293,6 +409,9 @@ def main() -> None:
     axes[2].set_xlabel("Radius")
     axes[2].set_ylabel("Mean pressure p")
     axes[2].set_title(f"Radial pressure at t={args.time:g}")
+    axes[3].set_xlabel("Radius")
+    axes[3].set_ylabel("Mean radial velocity")
+    axes[3].set_title(f"Radial velocity at t={args.time:g}")
     for axis in axes:
         axis.grid(alpha=0.2)
         axis.legend(frameon=False)

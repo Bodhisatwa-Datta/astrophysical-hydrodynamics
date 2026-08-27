@@ -121,5 +121,13 @@ symmetry, so its expected time exponent is
 $$R(t)\propto t^{1/2}.$$
 
 The three-dimensional spherical exponent $2/5$ is not applicable to this
-geometry. The coefficient $\xi_2(\gamma)$ depends on the similarity solution
-and is not assumed in the current comparison.
+geometry. I obtain the coefficient $\xi_2(\gamma)$ by evaluating the
+closed-form similarity profiles and enforcing
+
+$$
+E_0=2\pi\int_0^{R_s}
+\left(\frac{1}{2}\rho u_r^2+\frac{p}{\gamma-1}\right)r\,dr.
+$$
+
+For $\gamma=1.4$, the result is $\xi_2=1.00403$. Thus the benchmark parameters
+$E_0=\rho_0=1$ give $R_s=1.00403\sqrt{t}$ and $R_s(0.05)=0.22451$.

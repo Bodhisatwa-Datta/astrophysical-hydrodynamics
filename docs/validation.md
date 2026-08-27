@@ -396,13 +396,16 @@ was exactly 1 at $64^2$, $96^2$, and $128^2$. The runs used MUSCL-MC/RK2, HLL,
 CFL 0.25, and outflow boundaries; the shock remained well inside the domain.
 
 I measured the shock from the steepest outward density decrease in annular
-profiles and fitted $R=Ct^\alpha$ over $0.015\le t\le0.05$:
+profiles and fitted $R=Ct^\alpha$ over $0.015\le t\le0.05$. I independently
+evaluated the closed-form cylindrical similarity solution for the same
+$E_0$, $\rho_0$, and $\gamma$. Its dimensionless coefficient is
+$\xi_2=1.00403$, giving $R_s(0.05)=0.22451$.
 
-| Grid | Steps | $R(0.05)$ | Fitted $\alpha$ | Error from $1/2$ | Angular radius scatter |
-|---:|---:|---:|---:|---:|---:|
-| $64^2$ | 239 | 0.23542 | 0.4630 | $-7.40\%$ | $1.61\%$ |
-| $96^2$ | 375 | 0.23180 | 0.4727 | $-5.45\%$ | $0.97\%$ |
-| $128^2$ | 510 | 0.22958 | 0.4826 | $-3.49\%$ | $0.80\%$ |
+| Grid | Steps | $R(0.05)$ | Radius error | Fitted $\alpha$ | Error from $1/2$ | Angular scatter |
+|---:|---:|---:|---:|---:|---:|---:|
+| $64^2$ | 239 | 0.23542 | $+4.86\%$ | 0.4630 | $-7.40\%$ | $1.61\%$ |
+| $96^2$ | 375 | 0.23180 | $+3.25\%$ | 0.4727 | $-5.45\%$ | $0.97\%$ |
+| $128^2$ | 510 | 0.22958 | $+2.26\%$ | 0.4826 | $-3.49\%$ | $0.80\%$ |
 
 The exponent moves monotonically toward the two-dimensional similarity value
 $1/2$. I did not use the familiar spherical $2/5$ exponent because it belongs
@@ -410,6 +413,20 @@ to a three-dimensional blast. The two finest final radii differ by 0.96%.
 Their radial profiles place the density shell and pressure drop at nearly the
 same radius, while the increasing density peak shows that the thin swept-up
 shell is still resolution sensitive.
+
+I compared the annular means with the exact density, radial velocity, and
+pressure profiles over $0\le r\le1.25R_s$. The relative, radius-weighted $L_1$
+errors decrease consistently:
+
+| Grid | Density | Radial velocity | Pressure |
+|---:|---:|---:|---:|
+| $64^2$ | 23.38% | 21.43% | 18.14% |
+| $96^2$ | 20.79% | 9.14% | 12.26% |
+| $128^2$ | 14.90% | 8.44% | 8.89% |
+
+The density error converges more slowly because the exact solution jumps from
+six times the ambient density immediately behind the shock to the undisturbed
+state, whereas the numerical method spreads that shell over several cells.
 
 For the angular measurement I located the shock independently in 16 sectors.
 Its relative standard deviation decreases by a factor of two from $64^2$ to
@@ -423,10 +440,13 @@ below $1.74\times10^{-17}$. The minimum density reached 0.03760 in the central
 rarefaction and the minimum pressure remained at the positive ambient value
 $10^{-5}$; no floor or clipping was applied.
 
-I have not yet integrated the two-dimensional self-similar ordinary
-differential equations, so I compare the scaling exponent rather than claiming
-agreement with an exact normalization coefficient or full analytic radial
-profile. The finite initial injection radius also delays the asymptotic regime.
+I used the standard strong-shock, zero-ambient-pressure similarity solution for
+the reference profiles while retaining $p_0=10^{-5}$ outside the analytic
+shock for plotting. The numerical run begins from a finite injection region,
+not an ideal point explosion, so early-time and finite-resolution offsets are
+expected. The closed-form equations and normalization follow J. R. Kamm,
+[Evaluation of the Sedov-von Neumann-Taylor Blast Wave
+Solution](https://cococubed.com/papers/kamm_2000.pdf), LA-UR-00-6055 (2000).
 
 ## Current validation boundary
 
@@ -436,4 +456,5 @@ Kelvin--Helmholtz growth, controlled Rayleigh--Taylor growth, and a
 two-dimensional Sedov blast. Remaining limitations are quantitative rather
 than hidden: Kelvin--Helmholtz is not grid-converged, gravity is not exactly
 well balanced, Rayleigh--Taylor has not reached nonlinear mixing, and Sedov has
-not yet been compared with the full self-similar solution.
+a broadened density shell and a residual 2.26% shock-radius offset on the finest
+grid.

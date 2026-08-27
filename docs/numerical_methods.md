@@ -342,6 +342,21 @@ A power law $R=Ct^\alpha$ is fitted from $t=0.015$ to $0.05$, after the shock
 has expanded well beyond the injection radius. The measured $\alpha$ is
 compared with the two-dimensional similarity prediction $1/2$.
 
+For the full reference calculation, I evaluate the closed-form standard Sedov
+solution parametrically in the similarity velocity. The cylindrical geometry
+index is $j=2$, the ambient density exponent is $\omega=0$, and the strong-shock
+Rankine--Hugoniot state supplies the density, velocity, and pressure scales.
+I integrate the resulting dimensionless kinetic and internal energy profiles
+over $2\pi r\,dr$ to determine the normalization rather than inserting a
+tabulated constant. For $\gamma=1.4$, this gives $\xi_2=1.00403$.
+
+The benchmark interpolates the exact solution onto the same annular radii as
+the measured profiles. Density, radial velocity, and pressure errors use a
+radius-weighted relative $L_1$ norm over $r\le1.25R_s$. The implementation
+follows the closed-form construction in J. R. Kamm,
+[Evaluation of the Sedov-von Neumann-Taylor Blast Wave
+Solution](https://cococubed.com/papers/kamm_2000.pdf), LA-UR-00-6055 (2000).
+
 Angular symmetry is measured independently by repeating the radial-gradient
 location in 16 equal polar sectors. The standard deviation and peak-to-peak
 range of those sector radii are normalized by their mean. These measurements

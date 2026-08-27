@@ -11,10 +11,12 @@ I produced the recorded $64^2$, $96^2$, and $128^2$ study with:
 python benchmarks/sedov_taylor.py
 ```
 
-The driver records shock radius versus time, radial density and pressure
-profiles, conservation, positivity, runtime, and angular shock-radius scatter.
-It fits $R=Ct^\alpha$ and compares $\alpha$ with the correct two-dimensional
-value $1/2$, not the three-dimensional spherical value $2/5$.
+The driver records shock radius versus time, radial density, velocity, and
+pressure profiles, conservation, positivity, runtime, and angular shock-radius
+scatter. It fits $R=Ct^\alpha$ and compares the trajectory and full radial
+structure with the closed-form cylindrical Sedov solution. For these
+parameters the exact shock radius at $t=0.05$ is 0.22451; the measured error
+decreases from 4.86% at $64^2$ to 2.26% at $128^2$.
 
 The CSV data are written under `benchmarks/` and the field and radial-analysis
 figures under `figures/`. All quantities are dimensionless.

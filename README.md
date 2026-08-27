@@ -186,8 +186,11 @@ For the two-dimensional Sedov--Taylor blast, I deposited exactly one energy
 unit through a compact kernel of radius 0.05 and followed the shock to
 $t=0.05$. The fitted exponents in $R\propto t^\alpha$ were 0.463, 0.473, and
 0.483 at $64^2$, $96^2$, and $128^2$, approaching the correct 2D value 0.5.
-The two finest final shock radii differ by 1.0%, and angular radius scatter
-falls from 1.61% to 0.80%. Total energy remained constant within
+I also evaluated the closed-form cylindrical similarity solution. It gives
+$R_s(0.05)=0.22451$; the measured radius error falls from 4.86% to 2.26% under
+refinement. On the finest grid, density, radial velocity, and pressure profile
+errors are 14.90%, 8.44%, and 8.89% in the radial $L_1$ measure. Angular radius
+scatter falls from 1.61% to 0.80%, and total energy remained constant within
 `2.23e-16` relatively.
 
 ![Two-dimensional Sedov--Taylor density and pressure](figures/sedov_taylor_fields.png)
@@ -215,15 +218,14 @@ does not yet demonstrate nonlinear mushroom formation or a converged mixing
 layer. There is no positivity-preserving fallback. Physical viscosity is not
 implemented, so instability dissipation is numerical. The present smooth-order
 measurements use entropy waves; more independent smooth solutions would
-strengthen formal verification. The Sedov comparison currently checks the
-two-dimensional similarity exponent but not the full self-similar profile or
-its dimensionless normalization coefficient.
+strengthen formal verification. The Sedov density shell remains broadened by
+the finite-volume discretisation and the finite initial injection radius delays
+the exact point-blast asymptotic regime.
 
 ## Planned extensions
 
 The original 1D-to-2D benchmark sequence is now implemented. The strongest
-next scientific extension is comparison against a numerically integrated 2D
-Sedov similarity solution, followed by longer nonlinear Rayleigh--Taylor and
+next scientific extensions are longer nonlinear Rayleigh--Taylor and
 higher-resolution Kelvin--Helmholtz studies. An exactly well-balanced gravity
 scheme, optional physical viscosity, and performance profiling remain useful
 method-development targets.
