@@ -33,7 +33,8 @@ All quantities in the current benchmarks are dimensionless.
 - piecewise-constant (first-order Godunov) reconstruction;
 - primitive-variable MUSCL reconstruction with minmod, monotonized-central,
   and van Leer slope limiters;
-- HLL approximate Riemann flux with Davis signal-speed estimates;
+- selectable HLL, contact-restoring HLLC, and Rusanov approximate Riemann
+  fluxes;
 - selectable forward-Euler or two-stage SSP-RK2 integration with a
   configurable CFL timestep;
 - transmissive/outflow and periodic ghost-cell boundaries;
@@ -66,6 +67,7 @@ python examples/run_riemann.py rarefaction --cells 400 --cfl 0.7
 python benchmarks/convergence/sod.py
 python benchmarks/convergence/entropy_wave.py
 python benchmarks/reconstruction/compare.py
+python benchmarks/riemann_solvers/compare.py
 ```
 
 An individual second-order run can be made with, for example:
@@ -108,6 +110,14 @@ density $L_1$ error from `9.614786e-3` for the first-order method to
 
 ![Smooth entropy-wave convergence](figures/entropy_wave_convergence.png)
 
+With MUSCL-MC/RK2 at 400 cells, the Sod density $L_1$ errors are
+`1.496039e-3` (HLL), `1.446073e-3` (HLLC), and `1.872238e-3` (Rusanov). On the
+translating contact, the corresponding 1--99% widths are `0.0275`, `0.0250`,
+and `0.0275`. HLLC is sharper here, but the comparison does not support a
+claim that one flux is best for every problem.
+
+![Matched HLL, HLLC, and Rusanov comparison](figures/riemann_solver_comparison.png)
+
 ## Repository layout
 
 ```text
@@ -124,16 +134,17 @@ figures/            generated scientific figures
 Only source-free 1D Euler flow is implemented. HLL remains diffusive at contact
 waves even with MUSCL reconstruction. There is no positivity-preserving
 fallback: an invalid state raises an exception for diagnosis. The exact solver
-is a validation utility, not the evolution flux. No HLLC/Rusanov comparison,
-2D flow, gravity, or physical viscosity is implemented yet. The present
-second-order measurement uses a smooth entropy wave; more smooth solutions
-would strengthen the formal verification.
+is a validation utility, not the evolution flux. No 2D flow, gravity, or
+physical viscosity is implemented yet. The present second-order measurement
+uses a smooth entropy wave; more smooth solutions would strengthen the formal
+verification.
 
 ## Planned extensions
 
-The next milestone is HLLC and Rusanov implementation, followed by controlled
-flux comparisons using the same first- and second-order spatial methods. After
-the 1D flux study is validated, the code will be generalized to 2D
-Kelvin--Helmholtz, Rayleigh--Taylor, and Sedov--Taylor benchmarks.
+The next milestone is a clean 2D Euler extension with four conserved variables,
+directional fluxes, multidimensional CFL control, and periodic, reflective, and
+outflow boundaries. A uniform-flow and directionally rotated 1D problem should
+be validated before starting Kelvin--Helmholtz, Rayleigh--Taylor, or
+Sedov--Taylor calculations.
 
 Licensed under GPL-3.0; see [LICENSE](LICENSE).

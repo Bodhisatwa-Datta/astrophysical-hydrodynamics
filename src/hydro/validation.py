@@ -43,6 +43,7 @@ def run_riemann_problem(
     reconstruction: str = "constant",
     limiter: str = "mc",
     integrator: str = "euler",
+    riemann_solver: str = "hll",
 ) -> RiemannResult:
     """Run one problem on ``[0, 1]`` and compare with its exact solution."""
     grid = Grid1D(0.0, 1.0, n_cells)
@@ -53,6 +54,7 @@ def run_riemann_problem(
         reconstruction=reconstruction,
         limiter=limiter,
         integrator=integrator,
+        riemann_solver=riemann_solver,
     )
     solver.initialise_function(problem.initial_condition)
     initial_totals = totals(solver.active_conserved, grid.dx)
@@ -85,6 +87,7 @@ def run_riemann_problem(
         "reconstruction": reconstruction,
         "limiter": limiter if reconstruction == "muscl" else "none",
         "integrator": integrator,
+        "riemann_solver": riemann_solver,
     }
     for index, name in enumerate(field_names):
         difference = numerical[index] - exact[index]
@@ -130,6 +133,7 @@ def run_entropy_wave(
     limiter: str,
     integrator: str,
     final_time: float = 1.0,
+    riemann_solver: str = "hll",
 ) -> SmoothWaveResult:
     """Advect a smooth entropy wave on a periodic unit domain."""
     grid = Grid1D(0.0, 1.0, n_cells)
@@ -141,6 +145,7 @@ def run_entropy_wave(
         limiter=limiter,
         integrator=integrator,
         boundary="periodic",
+        riemann_solver=riemann_solver,
     )
     solver.initialise_function(entropy_wave)
     initial_totals = totals(solver.active_conserved, grid.dx)
@@ -159,6 +164,7 @@ def run_entropy_wave(
         "reconstruction": reconstruction,
         "limiter": limiter if reconstruction == "muscl" else "none",
         "integrator": integrator,
+        "riemann_solver": riemann_solver,
         "density_L1_error": float(grid.dx * np.sum(np.abs(difference[0]))),
         "density_Linf_error": float(np.max(np.abs(difference[0]))),
     }

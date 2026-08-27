@@ -21,6 +21,7 @@ def main() -> None:
     parser.add_argument("--reconstruction", choices=("constant", "muscl"), default="constant")
     parser.add_argument("--limiter", choices=("minmod", "mc", "vanleer"), default="mc")
     parser.add_argument("--integrator", choices=("euler", "rk2"), default="euler")
+    parser.add_argument("--riemann-solver", choices=("hll", "hllc", "rusanov"), default="hll")
     parser.add_argument("--output", type=Path)
     args = parser.parse_args()
 
@@ -30,7 +31,9 @@ def main() -> None:
         if args.reconstruction == "constant" and args.integrator == "euler"
         else f"{args.reconstruction}_{args.limiter}_{args.integrator}"
     )
-    output = args.output or Path("figures") / f"{problem.name}_hll_{method_label}.png"
+    output = args.output or Path("figures") / (
+        f"{problem.name}_{args.riemann_solver}_{method_label}.png"
+    )
     result = run_riemann_problem(
         problem,
         args.cells,
@@ -38,6 +41,7 @@ def main() -> None:
         args.reconstruction,
         args.limiter,
         args.integrator,
+        args.riemann_solver,
     )
 
     gamma = problem.gamma
@@ -65,7 +69,8 @@ def main() -> None:
     axes[1, 1].set_xlabel("Position $x$ (dimensionless)")
     display_name = problem.name.replace("_", " ").title()
     figure.suptitle(
-        f"{display_name}, {method_label.replace('_', ' ')}, "
+        f"{display_name}, {args.riemann_solver.upper()}, "
+        f"{method_label.replace('_', ' ')}, "
         f"t={problem.final_time:g}, N={args.cells}"
     )
     figure.tight_layout()

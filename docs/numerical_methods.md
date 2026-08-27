@@ -61,7 +61,9 @@ $$
 Ghost cells and interface fluxes are recomputed at both stages. Using RK2 with
 MUSCL keeps temporal and spatial accuracy consistent for smooth flow.
 
-## HLL interface flux
+## Approximate Riemann fluxes
+
+### HLL
 
 For left/right states $\mathbf{U}_L$ and $\mathbf{U}_R$, signal speeds are
 estimated as
@@ -85,6 +87,43 @@ $$
 
 HLL is robust and captures shocks, but its two-wave model does not explicitly
 resolve the contact wave and therefore smears contacts.
+
+### Rusanov
+
+The local Lax--Friedrichs or Rusanov flux is
+
+$$
+\widehat{\mathbf{F}}_{\rm Rus}=\frac{1}{2}(\mathbf{F}_L+\mathbf{F}_R)
+-\frac{1}{2}a_{\max}(\mathbf{U}_R-\mathbf{U}_L),
+$$
+
+where
+
+$$a_{\max}=\max(|u_L|+c_L,|u_R|+c_R).$$
+
+Its single maximum-speed dissipation makes it compact and robust, but usually
+more diffusive than HLL or HLLC around contacts and narrow post-shock features.
+
+### HLLC
+
+HLLC restores the missing middle wave. Using the same Davis outer speeds as
+HLL, the contact speed is
+
+$$
+S_M=\frac{p_R-p_L+\rho_Lu_L(S_L-u_L)-\rho_Ru_R(S_R-u_R)}
+{\rho_L(S_L-u_L)-\rho_R(S_R-u_R)}.
+$$
+
+Left and right star states are constructed across $S_L$, $S_M$, and $S_R$,
+and their fluxes follow from the Rankine--Hugoniot relation
+
+$$\mathbf{F}_{K}^{*}=\mathbf{F}_{K}+S_K(\mathbf{U}_{K}^{*}-\mathbf{U}_{K}).$$
+
+The implementation computes star pressure from both sides and averages the two
+algebraically identical values to reduce floating-point asymmetry. HLLC exactly
+recovers the physical flux of a stationary constant-pressure contact. It costs
+more arithmetic and is not assumed to be more robust or accurate for every
+wave pattern.
 
 ## Stability and boundaries
 

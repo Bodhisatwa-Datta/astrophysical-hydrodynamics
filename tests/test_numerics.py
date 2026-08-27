@@ -2,7 +2,7 @@ import numpy as np
 import unittest
 
 from hydro.boundary_conditions import apply_outflow
-from hydro.riemann import hll_flux
+from hydro.riemann import hll_flux, hllc_flux, riemann_flux, rusanov_flux
 from hydro.state import euler_flux, primitive_to_conservative
 from hydro.timestepping import cfl_timestep
 
@@ -12,6 +12,24 @@ class NumericsTests(unittest.TestCase):
         primitive = np.array([[1.0, 0.7], [0.2, -0.1], [1.0, 0.4]])
         conserved = primitive_to_conservative(primitive, gamma=1.4)
         np.testing.assert_allclose(hll_flux(conserved, conserved, 1.4), euler_flux(conserved, 1.4))
+
+    def test_all_fluxes_are_consistent_for_identical_states(self) -> None:
+        primitive = np.array([[0.8, 1.2], [-0.4, 0.7], [0.6, 1.5]])
+        conserved = primitive_to_conservative(primitive, gamma=1.4)
+        physical = euler_flux(conserved, gamma=1.4)
+        for flux in (hll_flux, hllc_flux, rusanov_flux):
+            with self.subTest(flux=flux.__name__):
+                np.testing.assert_allclose(flux(conserved, conserved, 1.4), physical)
+
+    def test_hllc_exactly_preserves_a_stationary_contact_flux(self) -> None:
+        left = primitive_to_conservative(np.array([1.0, 0.0, 1.0]), 1.4)
+        right = primitive_to_conservative(np.array([0.125, 0.0, 1.0]), 1.4)
+        np.testing.assert_allclose(hllc_flux(left, right, 1.4), [0.0, 1.0, 0.0])
+
+    def test_unknown_riemann_solver_raises(self) -> None:
+        state = primitive_to_conservative(np.array([1.0, 0.0, 1.0]), 1.4)
+        with self.assertRaises(ValueError):
+            riemann_flux(state, state, 1.4, "unknown")
 
     def test_outflow_boundary_copies_edge_cells(self) -> None:
         state = np.zeros((3, 8))

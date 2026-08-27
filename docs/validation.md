@@ -166,10 +166,56 @@ pressures remained positive without floors. MC gave the lowest errors in this
 particular comparison, but that is not evidence that it is universally best;
 the limiter choice still trades smoothness, compression, and robustness.
 
+## HLL, HLLC, and Rusanov comparison
+
+I compared the three fluxes at 400 cells and CFL 0.4 without changing the
+initial conditions or output times. Each flux was run once with the
+piecewise-constant/forward-Euler configuration and once with MUSCL-MC/RK2.
+Complete per-run errors, minima, conservation residuals, step counts, and
+runtimes are stored in `benchmarks/riemann_solvers/comparison.csv`.
+
+### Density error with the first-order configuration
+
+| Flux | Sod | Contact | Strong shock | Rarefaction |
+|---|---:|---:|---:|---:|
+| HLL | $7.811995\times10^{-3}$ | $1.990704\times10^{-2}$ | $1.185164\times10^{-1}$ | $1.511274\times10^{-2}$ |
+| HLLC | $7.376189\times10^{-3}$ | $1.486001\times10^{-2}$ | $1.167735\times10^{-1}$ | $1.517544\times10^{-2}$ |
+| Rusanov | $1.113357\times10^{-2}$ | $2.524677\times10^{-2}$ | $1.443782\times10^{-1}$ | $1.442088\times10^{-2}$ |
+
+### Density error with MUSCL-MC/RK2
+
+| Flux | Sod | Contact | Strong shock | Rarefaction |
+|---|---:|---:|---:|---:|
+| HLL | $1.496039\times10^{-3}$ | $4.359090\times10^{-3}$ | $3.981569\times10^{-2}$ | $1.677545\times10^{-3}$ |
+| HLLC | $1.446073\times10^{-3}$ | $3.853941\times10^{-3}$ | $3.992733\times10^{-2}$ | $1.677466\times10^{-3}$ |
+| Rusanov | $1.872238\times10^{-3}$ | $4.819122\times10^{-3}$ | $4.469082\times10^{-2}$ | $1.744289\times10^{-3}$ |
+
+For the translating contact, the first-order 1--99% widths were 0.140 (HLL),
+0.0975 (HLLC), and 0.175 (Rusanov). With MUSCL-MC/RK2 they narrowed to 0.0275,
+0.0250, and 0.0275. HLLC therefore gave the clearest contact advantage, while
+the reconstruction reduced the difference between fluxes considerably.
+
+All 24 runs retained positive density and pressure without floors. On the
+strong shock, HLL and HLLC were effectively tied in density error with the
+second-order configuration; HLLC had the lower pressure error, while Rusanov
+remained more diffusive. In the first-order rarefaction, Rusanov happened to
+give the smallest density error but not the smallest pressure error. I therefore
+do not treat the ranking from one scalar metric as universal.
+
+The mean wall times over the four problems were:
+
+| Configuration | HLL | HLLC | Rusanov |
+|---|---:|---:|---:|
+| First order | 0.335 s | 0.366 s | 0.345 s |
+| MUSCL-MC/RK2 | 0.862 s | 0.964 s | 0.910 s |
+
+In this single local run, HLLC cost roughly 9--12% more than HLL. These timings
+are descriptive rather than a hardware-independent performance result.
+
 ## Current validation boundary
 
 The second-order result has been demonstrated for one smooth entropy wave and
-the limiter behavior has been measured on four Riemann problems. No alternative
-Riemann flux or multidimensional benchmark has been run. The next validation
-target is a controlled HLL, HLLC, and Rusanov comparison using these same
-spatial and temporal methods.
+the limiter and flux behavior has been measured on four Riemann problems. No
+multidimensional benchmark has been run. The next target is a 2D Euler core,
+validated first with uniform flow and directionally rotated one-dimensional
+problems before any instability calculation is attempted.

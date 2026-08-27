@@ -10,7 +10,7 @@ from numpy.typing import NDArray
 
 from .boundary_conditions import apply_outflow, apply_periodic
 from .reconstruction import LIMITERS, reconstruct_interfaces
-from .riemann import hll_flux
+from .riemann import RIEMANN_SOLVERS, riemann_flux
 from .state import conservative_to_primitive, primitive_to_conservative
 from .timestepping import cfl_timestep
 
@@ -57,6 +57,7 @@ class Solver1D:
         limiter: str = "mc",
         integrator: str = "euler",
         boundary: str = "outflow",
+        riemann_solver: str = "hll",
     ):
         if gamma <= 1.0 or not np.isfinite(gamma):
             raise ValueError("gamma must be finite and greater than one")
@@ -70,6 +71,11 @@ class Solver1D:
             raise ValueError("integrator must be 'euler' or 'rk2'")
         if boundary not in ("outflow", "periodic"):
             raise ValueError("boundary must be 'outflow' or 'periodic'")
+        if riemann_solver not in RIEMANN_SOLVERS:
+            raise ValueError(
+                f"unknown Riemann solver {riemann_solver!r}; "
+                f"choose from {tuple(RIEMANN_SOLVERS)}"
+            )
         if reconstruction == "muscl" and grid.nghost < 2:
             raise ValueError("MUSCL reconstruction requires at least two ghost cells")
         self.grid = grid
@@ -79,6 +85,7 @@ class Solver1D:
         self.limiter = limiter
         self.integrator = integrator
         self.boundary = boundary
+        self.riemann_solver = riemann_solver
         self.time = 0.0
         self.steps = 0
         self.conserved = np.empty((3, grid.n_cells + 2 * grid.nghost))
@@ -177,7 +184,12 @@ class Solver1D:
         """Return the semi-discrete flux divergence in active cells."""
         self._apply_boundary(state)
         if self.reconstruction == "constant":
-            interface_flux = hll_flux(state[:, :-1], state[:, 1:], self.gamma)
+            interface_flux = riemann_flux(
+                state[:, :-1],
+                state[:, 1:],
+                self.gamma,
+                self.riemann_solver,
+            )
         else:
             primitive = conservative_to_primitive(state, self.gamma)
             left_primitive, right_primitive = reconstruct_interfaces(
@@ -185,7 +197,9 @@ class Solver1D:
             )
             left = primitive_to_conservative(left_primitive, self.gamma)
             right = primitive_to_conservative(right_primitive, self.gamma)
-            interface_flux = hll_flux(left, right, self.gamma)
+            interface_flux = riemann_flux(
+                left, right, self.gamma, self.riemann_solver
+            )
 
         start = self.grid.nghost
         stop = start + self.grid.n_cells
