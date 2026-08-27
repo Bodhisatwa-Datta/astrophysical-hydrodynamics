@@ -8,6 +8,7 @@ import numpy as np
 from numpy.typing import ArrayLike, NDArray
 
 from .eos import validate_primitive
+from .state2d import validate_primitive_2d
 
 
 def _same_shape(*values: ArrayLike) -> tuple[NDArray[np.float64], ...]:
@@ -90,3 +91,37 @@ def reconstruct_interfaces(
     validate_primitive(right[0], right[1], right[2])
     return left, right
 
+
+def reconstruct_interfaces_2d(
+    primitive: ArrayLike, limiter: str, direction: str
+) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
+    """Reconstruct 2D primitive states on faces normal to x or y."""
+    values = np.asarray(primitive, dtype=np.float64)
+    if values.ndim != 3 or values.shape[0] != 4:
+        raise ValueError("2D primitive state must have shape (4, nx_total, ny_total)")
+    validate_primitive_2d(values)
+    try:
+        limiter_function = LIMITERS[limiter]
+    except KeyError as error:
+        raise ValueError(
+            f"unknown limiter {limiter!r}; choose from {tuple(LIMITERS)}"
+        ) from error
+
+    slopes = np.zeros_like(values)
+    if direction == "x":
+        backward = values[:, 1:-1, :] - values[:, :-2, :]
+        forward = values[:, 2:, :] - values[:, 1:-1, :]
+        slopes[:, 1:-1, :] = limiter_function(backward, forward)
+        left = values[:, :-1, :] + 0.5 * slopes[:, :-1, :]
+        right = values[:, 1:, :] - 0.5 * slopes[:, 1:, :]
+    elif direction == "y":
+        backward = values[:, :, 1:-1] - values[:, :, :-2]
+        forward = values[:, :, 2:] - values[:, :, 1:-1]
+        slopes[:, :, 1:-1] = limiter_function(backward, forward)
+        left = values[:, :, :-1] + 0.5 * slopes[:, :, :-1]
+        right = values[:, :, 1:] - 0.5 * slopes[:, :, 1:]
+    else:
+        raise ValueError("direction must be 'x' or 'y'")
+    validate_primitive_2d(left)
+    validate_primitive_2d(right)
+    return left, right

@@ -67,9 +67,22 @@ $$
 E=\frac{p}{\gamma-1}+\frac{1}{2}\rho(v_x^2+v_y^2).
 $$
 
-The present source term is zero. Gravity will require both momentum and energy
-source terms and is deliberately deferred until the homogeneous 2D operator is
-validated.
+With a prescribed constant gravitational acceleration
+$\mathbf{g}=(g_x,g_y)$, the implemented source is
+
+$$
+\mathbf{S}_{\rm grav}=
+\begin{pmatrix}
+0\\ \rho g_x\\ \rho g_y\\
+\rho v_xg_x+\rho v_yg_y
+\end{pmatrix}.
+$$
+
+The last component is gravitational work on the gas. For the time-independent
+potential $\Phi=-(g_xx+g_yy)$, a closed system should conserve the sum of gas
+and potential energy,
+
+$$E_{\rm gas+grav}=\int(E+\rho\Phi)\,dV.$$
 
 ## Admissible states
 
@@ -91,3 +104,22 @@ run reported here the waves have not reached the boundaries at $t=0.2$;
 momentum nevertheless changes because unequal far-field pressures exert a net
 flux across the two domain boundaries. Mass and energy boundary fluxes remain
 zero for the stationary far-field states.
+
+## Sedov--Taylor dimensional scaling
+
+For an impulsive energy $E_0$ released into uniform density $\rho_0$, dimensional
+analysis in $d$ spatial dimensions gives
+
+$$
+R(t)=\xi_d(\gamma)
+\left(\frac{E_0t^2}{\rho_0}\right)^{1/(d+2)}.
+$$
+
+The implemented calculation is two-dimensional Cartesian flow with circular
+symmetry, so its expected time exponent is
+
+$$R(t)\propto t^{1/2}.$$
+
+The three-dimensional spherical exponent $2/5$ is not applicable to this
+geometry. The coefficient $\xi_2(\gamma)$ depends on the similarity solution
+and is not assumed in the current comparison.

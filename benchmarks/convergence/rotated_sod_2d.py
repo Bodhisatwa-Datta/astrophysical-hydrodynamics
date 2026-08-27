@@ -1,4 +1,4 @@
-"""Validate the first-order 2D solver with uniform flow and rotated Sod tubes."""
+"""Validate the 2D solver with uniform flow and rotated Sod tubes."""
 
 from __future__ import annotations
 
@@ -8,12 +8,15 @@ import json
 from pathlib import Path
 from time import perf_counter
 
-import matplotlib.pyplot as plt
+import matplotlib
 import numpy as np
 
 from hydro.diagnostics import totals_2d
 from hydro.exact_riemann import exact_riemann_solution
 from hydro.solver2d import Grid2D, Solver2D
+
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
 
 
 def sod_x(x: np.ndarray, y: np.ndarray) -> np.ndarray:
@@ -42,7 +45,9 @@ def sod_y(x: np.ndarray, y: np.ndarray) -> np.ndarray:
     )
 
 
-def uniform_validation() -> dict[str, float | int]:
+def uniform_validation(
+    reconstruction: str, limiter: str, integrator: str
+) -> dict[str, float | int]:
     grid = Grid2D(0.0, 1.0, 48, 0.0, 1.0, 36)
     solver = Solver2D(
         grid,
@@ -50,6 +55,9 @@ def uniform_validation() -> dict[str, float | int]:
         riemann_solver="hllc",
         x_boundary="periodic",
         y_boundary="periodic",
+        reconstruction=reconstruction,
+        limiter=limiter,
+        integrator=integrator,
     )
     primitive = np.empty((4, grid.nx, grid.ny))
     primitive[0] = 1.1
@@ -82,6 +90,11 @@ def main() -> None:
     parser.add_argument("--time", type=float, default=0.1)
     parser.add_argument("--cfl", type=float, default=0.4)
     parser.add_argument(
+        "--reconstruction", choices=("constant", "muscl"), default="constant"
+    )
+    parser.add_argument("--limiter", choices=("minmod", "mc", "vanleer"), default="mc")
+    parser.add_argument("--integrator", choices=("euler", "rk2"), default="euler")
+    parser.add_argument(
         "--csv", type=Path, default=Path("benchmarks/convergence/rotated_sod_2d.csv")
     )
     parser.add_argument(
@@ -98,8 +111,15 @@ def main() -> None:
     previous_resolution: int | None = None
     for resolution in resolutions:
         grid = Grid2D(0.0, 1.0, resolution, 0.0, 1.0, resolution)
-        solver_x = Solver2D(grid, cfl=args.cfl, riemann_solver="hll")
-        solver_y = Solver2D(grid, cfl=args.cfl, riemann_solver="hll")
+        configuration = dict(
+            cfl=args.cfl,
+            riemann_solver="hll",
+            reconstruction=args.reconstruction,
+            limiter=args.limiter,
+            integrator=args.integrator,
+        )
+        solver_x = Solver2D(grid, **configuration)
+        solver_y = Solver2D(grid, **configuration)
         solver_x.initialise_function(sod_x)
         solver_y.initialise_function(sod_y)
         initial_totals = totals_2d(solver_x.active_conserved, grid.dx * grid.dy)
@@ -130,6 +150,9 @@ def main() -> None:
         final_totals = totals_2d(solver_x.active_conserved, grid.dx * grid.dy)
         row: dict[str, float | int | str] = {
             "resolution": resolution,
+            "reconstruction": args.reconstruction,
+            "limiter": args.limiter if args.reconstruction == "muscl" else "none",
+            "integrator": args.integrator,
             "steps": solver_x.steps,
             "runtime_two_runs_seconds": runtime,
             "density_L1_x": error_x,
@@ -227,12 +250,27 @@ def main() -> None:
     axes[1, 1].set_title("Resolution dependence")
     axes[1, 1].grid(which="both", alpha=0.2)
     axes[1, 1].legend(frameon=False)
-    figure.suptitle(f"First-order unsplit 2D HLL validation at t={args.time}")
+    method_name = (
+        "first-order"
+        if args.reconstruction == "constant" and args.integrator == "euler"
+        else f"{args.reconstruction.upper()}-{args.limiter.upper()}/{args.integrator.upper()}"
+    )
+    figure.suptitle(f"{method_name} unsplit 2D HLL validation at t={args.time}")
     figure.tight_layout()
     args.figure.parent.mkdir(parents=True, exist_ok=True)
     figure.savefig(args.figure, dpi=180, bbox_inches="tight")
 
-    print(json.dumps({"uniform_flow": uniform_validation(), "rotated_sod": rows}, indent=2))
+    print(
+        json.dumps(
+            {
+                "uniform_flow": uniform_validation(
+                    args.reconstruction, args.limiter, args.integrator
+                ),
+                "rotated_sod": rows,
+            },
+            indent=2,
+        )
+    )
     print(f"Saved {args.csv}")
     print(f"Saved {args.figure}")
 
