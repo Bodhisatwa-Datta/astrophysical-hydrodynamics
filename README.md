@@ -36,7 +36,9 @@ All quantities in the current benchmarks are dimensionless.
 - transmissive/outflow ghost-cell boundaries;
 - primitive/conserved conversion with strict non-finite and positivity checks;
 - an internal exact ideal-gas Riemann solution for shock-tube validation;
-- mass, momentum, energy, positivity, and Mach-number diagnostics.
+- mass, momentum, energy, boundary-flux-budget, positivity, and Mach-number
+  diagnostics;
+- reproducible Sod convergence and additional Riemann-problem benchmarks.
 
 ## Installation and use
 
@@ -52,7 +54,16 @@ python examples/sod/run.py
 The Sod script accepts `--cells`, `--time`, `--cfl`, and `--output`. By default
 it writes `figures/sod_hll_first_order.png` and prints a JSON diagnostic report.
 
-Run the dependency-free test harness with:
+Run the other Riemann problems and the resolution study with:
+
+```bash
+python examples/run_riemann.py strong_shock --cells 400 --cfl 0.7
+python examples/run_riemann.py contact_discontinuity --cells 400
+python examples/run_riemann.py rarefaction --cells 400 --cfl 0.7
+python benchmarks/convergence/sod.py
+```
+
+The numerical sanity checks can be repeated with:
 
 ```bash
 python -m unittest discover -s tests -v
@@ -60,25 +71,31 @@ python -m unittest discover -s tests -v
 
 ## Validation status
 
-The current automated suite contains 11 tests covering state round trips, the
-equation of state, sound speed, Euler flux, invalid-state detection, HLL
-consistency, outflow ghosts, CFL calculation, uniform-flow preservation, and
-the Sod problem.
+I first checked the basic building blocks independently: primitive/conserved
+round trips, the ideal-gas pressure and sound speed, the Euler flux, HLL
+consistency, ghost-cell filling, and preservation of a uniform moving flow. I
+then ran four Riemann problems and compared every numerical profile with the
+internal exact solution.
 
 For the committed 400-cell Sod run at `t = 0.2`, the measured density
 $L_1$ error against the internal exact solution is `6.750936e-3`. Mass and
 total energy changes are zero to the reported floating-point precision, and
 the minimum density and pressure remain at their initial positive values
-(`0.125` and `0.1`). These numbers describe this specific run only; no formal
-convergence rate has yet been established. See [validation details](docs/validation.md).
+(`0.125` and `0.1`). A 50--800 cell study shows monotonically decreasing
+errors; over the 400-to-800 refinement, the measured orders are 0.661 for
+density, 0.804 for velocity, and 0.772 for pressure. These sub-unity global
+orders are expected for a discontinuous shock-tube solution and are not a
+smooth-flow accuracy measurement. See [validation details](docs/validation.md).
+
+![Measured Sod errors from 50 to 800 cells](figures/sod_convergence_first_order.png)
 
 ## Repository layout
 
 ```text
 src/hydro/          physics, fluxes, solver, exact solution, diagnostics
-examples/sod/       reproducible Sod driver and plotting
-tests/              automated unit and integration tests
-benchmarks/         future convergence, method, and performance studies
+examples/           reproducible Riemann drivers and plotting
+tests/              compact numerical regression checks
+benchmarks/         convergence data and future method/performance studies
 docs/               equations, numerical methods, and validation record
 figures/            generated scientific figures
 ```
@@ -90,14 +107,16 @@ space and time, HLL diffuses the contact wave, and only outflow boundaries are
 available. There is no positivity-preserving fallback: an invalid state raises
 an exception for diagnosis. The exact solver is a validation utility, not the
 evolution flux. No 2D, gravity, physical viscosity, MUSCL reconstruction, HLLC,
-RK2, or convergence study is implemented yet.
+or RK2 is implemented yet. The current convergence study concerns a
+discontinuous solution and does not establish formal smooth-flow order.
 
 ## Planned extensions
 
-The next milestone is a controlled 1D resolution study, followed by additional
-Riemann problems. MUSCL reconstruction and RK2 should be added together before
-comparing HLL with HLLC and Rusanov. Only after those 1D methods are validated
-will the code be generalized to 2D Kelvin--Helmholtz, Rayleigh--Taylor, and
-Sedov--Taylor benchmarks.
+The next milestone is primitive-variable MUSCL reconstruction with minmod, MC,
+and van Leer limiters, paired with RK2 time integration. It should include a
+smooth-wave convergence test so formal order can be measured. HLLC and Rusanov
+comparisons follow. Only after those 1D methods are validated will the code be
+generalized to 2D Kelvin--Helmholtz, Rayleigh--Taylor, and Sedov--Taylor
+benchmarks.
 
 Licensed under GPL-3.0; see [LICENSE](LICENSE).

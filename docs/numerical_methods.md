@@ -52,6 +52,18 @@ Only the final step is shortened to land exactly on the requested output time.
 The default CFL number is 0.8. Transmissive boundaries copy the nearest active
 cell into each ghost cell, corresponding to a zero-gradient extrapolation.
 
+For the current open-boundary Riemann problems, conservation is assessed using
+the finite-volume boundary budget
+
+$$
+\Delta\sum_i\mathbf{U}_i\Delta x
+=\left(\mathbf{F}_{\rm left}-\mathbf{F}_{\rm right}\right)\Delta t.
+$$
+
+The reported residual subtracts this expected flux contribution. This simple
+far-field expression is used only while the initial left and right states still
+occupy the domain boundaries.
+
 ## Exact validation solution
 
 The internal exact Riemann solver iterates for the star-region pressure using
@@ -60,3 +72,17 @@ solution in $\xi=(x-x_0)/t$. Its construction follows the standard method in
 E. F. Toro, *Riemann Solvers and Numerical Methods for Fluid Dynamics*. It is
 used only for comparisons and never to evolve the numerical state.
 
+## Error norms and observed order
+
+For a cell-centred numerical field $q_i$ and exact value $q_i^{\rm exact}$,
+the reported discrete integral error is
+
+$$E_1=\Delta x\sum_i|q_i-q_i^{\rm exact}|.$$
+
+Between two grid spacings, the experimental order is
+
+$$p=\frac{\log(E_h/E_{h/2})}{\log 2}.$$
+
+Shock-tube solutions contain discontinuities, so their global observed order
+need not equal the method's formal order on smooth solutions. A smooth-wave
+test will be required alongside the future second-order scheme.
