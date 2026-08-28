@@ -208,11 +208,6 @@ docs/               equations, numerical methods, and validation record
 figures/            generated scientific figures
 ```
 
-## Authorship and use of tools
-
-This is my independent computational astrophysics project. I chose the model
-problems, ran the recorded calculations, inspected the figures and CSV data, the numerical choices and conclusions presented
-here.
 
 ## Current limitations
 
