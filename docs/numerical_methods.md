@@ -11,9 +11,10 @@ $$
 \widehat{\mathbf{F}}_{i-1/2}\right).
 $$
 
-The current reconstruction is piecewise constant, so the left and right
-states at each face are the adjacent cell averages. Time integration is one
-forward-Euler step. This path remains available as the first-order baseline.
+The baseline reconstruction is piecewise constant, so the left and right
+states at each face are the adjacent cell averages. Its time integration is
+one forward-Euler step. This path remains available alongside the second-order
+method described below.
 
 ## MUSCL reconstruction
 
