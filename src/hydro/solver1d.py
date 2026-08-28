@@ -124,7 +124,7 @@ class Solver1D:
         )
 
     def step(self, dt: float | None = None) -> float:
-        """Advance one explicit Euler step and return the timestep used."""
+        """Advance one Euler or SSP-RK2 step and return the timestep used."""
         self._require_initialised()
         stable_dt = self.timestep()
         if dt is None:

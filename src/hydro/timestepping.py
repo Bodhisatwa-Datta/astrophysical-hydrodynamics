@@ -1,4 +1,4 @@
-"""CFL stability limits for explicit Euler integration."""
+"""CFL stability limits for explicit finite-volume integration."""
 
 from __future__ import annotations
 
@@ -25,4 +25,3 @@ def cfl_timestep(
     if maximum_speed <= 0.0 or not np.isfinite(maximum_speed):
         raise ValueError("maximum signal speed must be finite and positive")
     return cfl * dx / maximum_speed
-
