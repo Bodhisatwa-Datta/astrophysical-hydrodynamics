@@ -211,8 +211,7 @@ figures/            generated scientific figures
 ## Authorship and use of tools
 
 This is my independent computational astrophysics project. I chose the model
-problems, ran the recorded calculations, inspected the figures and CSV data,
-and take responsibility for the numerical choices and conclusions presented
+problems, ran the recorded calculations, inspected the figures and CSV data, the numerical choices and conclusions presented
 here.
 
 ## Current limitations
