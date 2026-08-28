@@ -213,9 +213,7 @@ figures/            generated scientific figures
 This is my independent computational astrophysics project. I chose the model
 problems, ran the recorded calculations, inspected the figures and CSV data,
 and take responsibility for the numerical choices and conclusions presented
-here. I used AI-assisted tools during parts of code review, debugging, and
-documentation editing. I retained changes only after checking them against the
-implementation and rerunning the relevant numerical checks or benchmarks.
+here.
 
 ## Current limitations
 
